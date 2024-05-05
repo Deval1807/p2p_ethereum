@@ -24,8 +24,6 @@ func main() {
 		fmt.Println("Error loading .env file:", err)
 		return
 	}
-	check := os.Getenv("check")
-	fmt.Println("check: ", check)
 	DB_URL := os.Getenv("DB_URL")
 	db, err := sql.Open("mysql", DB_URL)
 	if err != nil {
