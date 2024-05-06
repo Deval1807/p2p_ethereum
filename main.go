@@ -38,6 +38,7 @@ func main() {
 		panic(err.Error())
 	}
 	fmt.Println("Successful Connection to Database")
+
 	n := getNetworkInfo("eth_mainnet")
 	if n == nil {
 		fmt.Println("Invalid network")
@@ -71,7 +72,7 @@ func main() {
 		return
 	}
 
-	// enodeURL := "enode://1aa94845dec67a3005370a3bba63cccb86c238a21c682f692d407c0b92cd810a30dba58d31571e38e919a2f3816d521789f904a6ffad5f517f69a17a58dadf93@5.161.220.126:30318"
+	// enodeURL := "enode://79ef83056b3b19d76d3a333e7acf0317ddd636b835c3dd176e62c470419eb2e8025afc8e9e5cf3ae24704502cf6ce2c0546a12b1d518c23c92c4e15925ae7b63@121.138.64.204:30303"
 	// node, err := enode.ParseV4(enodeURL)
 	// if err != nil {
 	// 	// Handle error
@@ -141,12 +142,24 @@ func NewEthProtocol(version uint, opts EthProtocolOptions, db *sql.DB) p2p.Proto
 				Head:            opts.Head.Hash(),
 				TD:              opts.Head.Difficulty(),
 			}
+
 			err := c.statusExchange(&status)
 			if err != nil {
 				return err
 			}
 
 			fmt.Println("Done status exchange", "enode", c.node.URLv4())
+
+			// newBlockHashes := eth.NewBlockHashesPacket{
+			// 	{
+			// 		Number: 0,
+			// 		Hash:   opts.GenesisHash,
+			// 	},
+			// }
+
+			if err := c.requestNewBlocks(); err != nil {
+				return err
+			}
 
 			// Handle all the of the messages here.
 			for {
@@ -159,12 +172,52 @@ func NewEthProtocol(version uint, opts EthProtocolOptions, db *sql.DB) p2p.Proto
 				fmt.Println("msg: ", msg)
 				// Print message type
 				fmt.Println("msg.Code:", msg.Code)
-				fmt.Println("msg.String():", msg.String())
+
 				insert, err := db.Query("INSERT INTO p2p.p2pmessages (enode, msgcode) VALUES (?, ?);", c.node.URLv4(), msg.Code)
 				if err != nil {
 					panic(err.Error())
 				}
 				defer insert.Close()
+
+				switch msg.Code {
+				case eth.StatusMsg:
+					var status eth.StatusPacket
+					if err := msg.Decode(&status); err != nil {
+						return err
+					}
+					// Handle status message
+					fmt.Println("Received status message:", status)
+
+				case eth.NewBlockHashesMsg:
+					var nhPacket eth.NewBlockHashesPacket
+					if err := msg.Decode(&nhPacket); err != nil {
+						return err
+					}
+					// Handle NewBlockHashes message
+					fmt.Println("Received NewBlockHashes message:", nhPacket)
+
+				case eth.GetBlockBodiesMsg:
+					var gbPacket eth.GetBlockBodiesPacket
+					if err := msg.Decode(&gbPacket); err != nil {
+						return err
+					}
+					// Handle GetBlockBodies message
+					fmt.Println("Received GetBlockBodies message:", gbPacket)
+
+				case eth.TransactionsMsg:
+					var txPacket eth.TransactionsPacket
+					if err := msg.Decode(&txPacket); err != nil {
+						return err
+					}
+					// Handle Transactions message
+					fmt.Println("Received Transactions message:", txPacket)
+
+				// Add cases for other message types as needed
+
+				default:
+					return fmt.Errorf("unknown message type: %d", msg.Code)
+				}
+
 			}
 		},
 	}
@@ -172,6 +225,17 @@ func NewEthProtocol(version uint, opts EthProtocolOptions, db *sql.DB) p2p.Proto
 
 func PrintMessageType(packet eth.Packet) {
 	fmt.Println("Message Type:", packet.Name())
+}
+
+func (c *conn) requestNewBlocks() error {
+	// Send a message to request new block hashes
+	msg := eth.NewBlockHashesPacket{}
+	if err := p2p.Send(c.rw, eth.NewBlockHashesMsg, &msg); err != nil {
+		return err
+	}
+	hashes, numbers := msg.Unpack()
+	fmt.Println("Requested new blocks and the msg is:  ", msg, hashes, numbers)
+	return nil
 }
 
 // statusExchange will exchange status message between the nodes. It will return
