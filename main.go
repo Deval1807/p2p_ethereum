@@ -1,15 +1,21 @@
 package main
 
+// necessary imports
 import (
+	"bytes"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/eth/protocols/eth"
 	"github.com/ethereum/go-ethereum/p2p"
@@ -26,6 +32,8 @@ func main() {
 		fmt.Println("Error loading .env file:", err)
 		return
 	}
+
+	// connect database
 	DB_URL := os.Getenv("DB_URL")
 	db, err := sql.Open("mysql", DB_URL)
 	if err != nil {
@@ -40,6 +48,7 @@ func main() {
 	}
 	fmt.Println("Successful Connection to Database")
 
+	// get the network information
 	n := getNetworkInfo("eth_mainnet")
 	if n == nil {
 		fmt.Println("Invalid network")
@@ -61,6 +70,7 @@ func main() {
 		ForkID:      n.forkId,
 	}
 
+	// Generate Private Key
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		fmt.Println("Error generating private key:", err)
@@ -73,6 +83,7 @@ func main() {
 		return
 	}
 
+	// Static connection to a particular enode
 	enodeURL := "enode://46948128c35a1d9b2d05067f70882873f517075dd7709e78f19601244a3741c2d9be34169f67764b42019dbc6ce24dbaa4210ec4f57225df30f04b10f30f59a8@167.179.75.28:30303"
 	node, err := enode.ParseV4(enodeURL)
 	if err != nil {
@@ -287,9 +298,82 @@ func (c *conn) readStatus(packet *eth.StatusPacket) error {
 
 	fmt.Println("New peer connected", "fork_id", hex.EncodeToString(status.ForkID.Hash[:]), "status", status)
 	fmt.Println("Hash of new block : ", status.Head)
+
+	latestBlockHash := status.Head
+	getBlockNumberByHash(latestBlockHash)
+
 	return nil
 }
 
+func getBlockNumberByHash(hash common.Hash) {
+	RPC_URL := os.Getenv("ALCHEMY_URL")
+	body := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "eth_getBlockByHash",
+		"params": []interface{}{
+			hash,
+			true,
+		},
+	}
+
+	// Encode the request body as JSON
+	requestBody, err := json.Marshal(body)
+	if err != nil {
+		fmt.Println("Error encoding request body:", err)
+		return
+	}
+
+	// Create a new HTTP POST request
+	req, err := http.NewRequest("POST", RPC_URL, bytes.NewBuffer(requestBody))
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return
+	}
+
+	// Set the Content-Type header to specify JSON data
+	req.Header.Set("Content-Type", "application/json")
+
+	// Create an HTTP client
+	client := &http.Client{}
+
+	// Send the request
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error sending request:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Check the response status code
+	fmt.Println("Response Status:", resp.Status)
+
+	// Decode the response body
+	var responseData map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&responseData)
+	if err != nil {
+		fmt.Println("Error decoding response body:", err)
+		return
+	}
+
+	// Extract the "number" field from the "result" object
+	result := responseData["result"].(map[string]interface{})
+	number := result["number"].(string)
+
+	// Print the number
+	// fmt.Println("Block Number:", number) // this will be a hexadecimal string
+	// fmt.Printf("Type of: %T\n", number)
+
+	// Parse the hexadecimal string to an integer
+	numberInt, err := strconv.ParseInt(number, 0, 64)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	fmt.Println("Latest Block Number:", numberInt)
+}
+
+// Try for direct NewBlockHash msg request
 /*
 func (c *conn) newBlockExchange(packet *eth.NewBlockHashesPacket) error {
 	errc := make(chan error, 2)
