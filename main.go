@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/eth/protocols/eth"
 	"github.com/ethereum/go-ethereum/p2p"
+	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/nat"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
@@ -72,18 +73,18 @@ func main() {
 		return
 	}
 
-	// enodeURL := "enode://79ef83056b3b19d76d3a333e7acf0317ddd636b835c3dd176e62c470419eb2e8025afc8e9e5cf3ae24704502cf6ce2c0546a12b1d518c23c92c4e15925ae7b63@121.138.64.204:30303"
-	// node, err := enode.ParseV4(enodeURL)
-	// if err != nil {
-	// 	// Handle error
-	// 	fmt.Println("Errorrrr :", err)
-	// 	return
-	// }
+	enodeURL := "enode://46948128c35a1d9b2d05067f70882873f517075dd7709e78f19601244a3741c2d9be34169f67764b42019dbc6ce24dbaa4210ec4f57225df30f04b10f30f59a8@167.179.75.28:30303"
+	node, err := enode.ParseV4(enodeURL)
+	if err != nil {
+		// Handle error
+		fmt.Println("Errorrrr :", err)
+		return
+	}
 	// Create the p2p config
 	config := p2p.Config{
-		PrivateKey:     privateKey,
-		BootstrapNodes: n.enodes,
-		// StaticNodes: []*enode.Node{node},
+		PrivateKey: privateKey,
+		// BootstrapNodes: n.enodes,
+		StaticNodes: []*enode.Node{node},
 		MaxPeers:    100,                       // Can be increased later if we want to connect to more nodes
 		ListenAddr:  fmt.Sprintf(":%d", 30303), // TCP network listening port
 		DiscAddr:    fmt.Sprintf(":%d", 30303), // UDP p2p discovery port
@@ -157,9 +158,12 @@ func NewEthProtocol(version uint, opts EthProtocolOptions, db *sql.DB) p2p.Proto
 			// 	},
 			// }
 
-			if err := c.requestNewBlocks(); err != nil {
-				return err
-			}
+			// err1 := c.newBlockExchange(&newBlockHashes)
+			// if err1 != nil {
+			// 	return err1
+			// }
+
+			// fmt.Println("Done new block exchange")
 
 			// Handle all the of the messages here.
 			for {
@@ -223,21 +227,6 @@ func NewEthProtocol(version uint, opts EthProtocolOptions, db *sql.DB) p2p.Proto
 	}
 }
 
-func PrintMessageType(packet eth.Packet) {
-	fmt.Println("Message Type:", packet.Name())
-}
-
-func (c *conn) requestNewBlocks() error {
-	// Send a message to request new block hashes
-	msg := eth.NewBlockHashesPacket{}
-	if err := p2p.Send(c.rw, eth.NewBlockHashesMsg, &msg); err != nil {
-		return err
-	}
-	hashes, numbers := msg.Unpack()
-	fmt.Println("Requested new blocks and the msg is:  ", msg, hashes, numbers)
-	return nil
-}
-
 // statusExchange will exchange status message between the nodes. It will return
 // an error if the nodes are incompatible.
 func (c *conn) statusExchange(packet *eth.StatusPacket) error {
@@ -297,5 +286,57 @@ func (c *conn) readStatus(packet *eth.StatusPacket) error {
 	}
 
 	fmt.Println("New peer connected", "fork_id", hex.EncodeToString(status.ForkID.Hash[:]), "status", status)
+	fmt.Println("Hash of new block : ", status.Head)
 	return nil
 }
+
+/*
+func (c *conn) newBlockExchange(packet *eth.NewBlockHashesPacket) error {
+	errc := make(chan error, 2)
+
+	go func() {
+		errc <- p2p.Send(c.rw, eth.NewBlockHashesMsg, &packet)
+	}()
+
+	go func() {
+		errc <- c.readNewBlock(packet)
+	}()
+
+	timeout := time.NewTimer(5 * time.Second)
+	defer timeout.Stop()
+
+	for i := 0; i < 2; i++ {
+		select {
+		case err := <-errc:
+			if err != nil {
+				return err
+			}
+		case <-timeout.C:
+			return p2p.DiscReadTimeout
+		}
+	}
+
+	return nil
+
+}
+
+func (c *conn) readNewBlock(packet *eth.NewBlockHashesPacket) error {
+	msg, err := c.rw.ReadMsg()
+	if err != nil {
+		return err
+	}
+
+	if msg.Code != eth.NewBlockHashesMsg {
+		return errors.New("expected status message code")
+	}
+
+	err = msg.Decode(&packet)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("New Block:  ", packet)
+	return nil
+}
+
+*/
