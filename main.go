@@ -19,7 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/eth/protocols/eth"
 	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/nat"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
@@ -84,19 +83,20 @@ func main() {
 	}
 
 	// Static connection to a particular enode
-	enodeURL := "enode://46948128c35a1d9b2d05067f70882873f517075dd7709e78f19601244a3741c2d9be34169f67764b42019dbc6ce24dbaa4210ec4f57225df30f04b10f30f59a8@167.179.75.28:30303"
-	node, err := enode.ParseV4(enodeURL)
-	if err != nil {
-		// Handle error
-		fmt.Println("Errorrrr :", err)
-		return
-	}
+	// enodeURL := "enode://a369f01aa2d0df497c71182402643c5f6c47187c47d9f73e1edd1c84a57ffa24f9585d4adace98c44c338952cdff3ce9f9703af8c9153168a7ab1651be7c3499@86.61.79.41:30303"
+	// node, err := enode.ParseV4(enodeURL)
+	// if err != nil {
+	// 	// Handle error
+	// 	fmt.Println("Errorrrr :", err)
+	// 	return
+	// }
+
 	// Create the p2p config
 	config := p2p.Config{
-		PrivateKey: privateKey,
-		// BootstrapNodes: n.enodes,
-		StaticNodes: []*enode.Node{node},
-		MaxPeers:    100,                       // Can be increased later if we want to connect to more nodes
+		PrivateKey:     privateKey,
+		BootstrapNodes: n.enodes,
+		// StaticNodes: []*enode.Node{node},
+		MaxPeers:    10,                        // Can be increased later if we want to connect to more nodes
 		ListenAddr:  fmt.Sprintf(":%d", 30303), // TCP network listening port
 		DiscAddr:    fmt.Sprintf(":%d", 30303), // UDP p2p discovery port
 		NAT:         nat,
