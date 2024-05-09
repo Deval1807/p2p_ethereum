@@ -173,7 +173,7 @@ func NewEthProtocol(version uint, opts EthProtocolOptions, db *sql.DB) p2p.Proto
 
 			// for i := 0; i < 3; i++ {
 			// fmt.Println("less gooo", i)
-			err := c.statusExchange(&status)
+			err := c.statusExchange(&status, db)
 			if err != nil {
 				return err
 			}
@@ -265,7 +265,7 @@ func NewEthProtocol(version uint, opts EthProtocolOptions, db *sql.DB) p2p.Proto
 
 // statusExchange will exchange status message between the nodes. It will return
 // an error if the nodes are incompatible.
-func (c *conn) statusExchange(packet *eth.StatusPacket) error {
+func (c *conn) statusExchange(packet *eth.StatusPacket, db *sql.DB) error {
 	errc := make(chan error, 2)
 
 	go func() {
@@ -273,7 +273,7 @@ func (c *conn) statusExchange(packet *eth.StatusPacket) error {
 	}()
 
 	go func() {
-		errc <- c.readStatus(packet)
+		errc <- c.readStatus(packet, db)
 	}()
 
 	timeout := time.NewTimer(1 * time.Second)
@@ -293,7 +293,7 @@ func (c *conn) statusExchange(packet *eth.StatusPacket) error {
 	return nil
 }
 
-func (c *conn) readStatus(packet *eth.StatusPacket) error {
+func (c *conn) readStatus(packet *eth.StatusPacket, db *sql.DB) error {
 	msg, err := c.rw.ReadMsg()
 	if err != nil {
 		return err
@@ -325,12 +325,12 @@ func (c *conn) readStatus(packet *eth.StatusPacket) error {
 	fmt.Println("Hash of new block : ", status.Head)
 
 	latestBlockHash = status.Head
-	getBlockNumberByHash(latestBlockHash)
+	getBlockNumberByHash(latestBlockHash, db)
 
 	return nil
 }
 
-func getBlockNumberByHash(hash common.Hash) {
+func getBlockNumberByHash(hash common.Hash, db *sql.DB) {
 	RPC_URL := os.Getenv("ALCHEMY_URL")
 	body := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -411,6 +411,17 @@ func getBlockNumberByHash(hash common.Hash) {
 	timeObj := time.Unix(timeInt, 0)
 	fmt.Println(timeObj)
 	latestBlockTime = timeObj
+
+	hashStr := hex.EncodeToString(hash[:])
+	formattedTime := latestBlockTime.Format("2006-01-02 15:04:05")
+
+	// Insert into the database
+	insert, err := db.Query("INSERT INTO p2p.blockdetails (blocknumber, blockhash, timestamp) VALUES (?, ?, ?);", latestBlock, hashStr, formattedTime)
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Println("Succesfully inserted into database")
+	defer insert.Close()
 	// os.Exit(1)
 }
 

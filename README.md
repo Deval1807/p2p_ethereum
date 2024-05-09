@@ -11,6 +11,7 @@
 2. run `npm i`
 3. after the server is started, start frontend by `npm run dev`
 
+### Working:
 This programme will create a very minimalistic p2p node and will try to connect with a particular network (eth mainnet or polygon mainnet). Post establishing connection, it can send/receive messages as and when require. 
 
 For simplicity, the current implementation will only connect to 1 particular peer, rather than finding new peer each time.

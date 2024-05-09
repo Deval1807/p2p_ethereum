@@ -8,25 +8,18 @@ body {
   text-align: center; /* Center align its children */
 }
 
-.main_container {
-  width: 80%; /* Adjust the width as needed */
-  margin: 0 34%; /* This will horizontally center the container */
-}
-
 .title {
-  margin-left: 16%; /* Adjust margin for centering */
-  margin-right: auto; /* Adjust margin for centering */
-  /* margin-bottom: -1%; */
+  margin-bottom: 1em;
+  margin-left: 45%;
 }
 
 /* Table styles */
 .container {
-  width: 80%;
-  margin: 0 auto; /* Center the container */
-  overflow: hidden;
+  width: 50%;
+  overflow-x: auto; /* Enable horizontal scrolling if necessary */
   text-align: center; /* Center table contents */
-  padding: 0 0 2em 0;
-  display: table;
+  margin: 0 auto; /* Center the container */
+  margin-left: 27%;
 }
 
 .container th {
