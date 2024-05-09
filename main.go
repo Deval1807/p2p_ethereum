@@ -19,10 +19,13 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/eth/protocols/eth"
 	"github.com/ethereum/go-ethereum/p2p"
+	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/nat"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
 )
+
+var latestBlock int
 
 func main() {
 	// load the env file
@@ -83,20 +86,20 @@ func main() {
 	}
 
 	// Static connection to a particular enode
-	// enodeURL := "enode://a369f01aa2d0df497c71182402643c5f6c47187c47d9f73e1edd1c84a57ffa24f9585d4adace98c44c338952cdff3ce9f9703af8c9153168a7ab1651be7c3499@86.61.79.41:30303"
-	// node, err := enode.ParseV4(enodeURL)
-	// if err != nil {
-	// 	// Handle error
-	// 	fmt.Println("Errorrrr :", err)
-	// 	return
-	// }
+	enodeURL := "enode://46948128c35a1d9b2d05067f70882873f517075dd7709e78f19601244a3741c2d9be34169f67764b42019dbc6ce24dbaa4210ec4f57225df30f04b10f30f59a8@167.179.75.28:30303"
+	node, err := enode.ParseV4(enodeURL)
+	if err != nil {
+		// Handle error
+		fmt.Println("Errorrrr :", err)
+		return
+	}
 
 	// Create the p2p config
 	config := p2p.Config{
-		PrivateKey:     privateKey,
-		BootstrapNodes: n.enodes,
-		// StaticNodes: []*enode.Node{node},
-		MaxPeers:    10,                        // Can be increased later if we want to connect to more nodes
+		PrivateKey: privateKey,
+		// BootstrapNodes: n.enodes,
+		StaticNodes: []*enode.Node{node},
+		MaxPeers:    1,                         // Can be increased later if we want to connect to more nodes
 		ListenAddr:  fmt.Sprintf(":%d", 30303), // TCP network listening port
 		DiscAddr:    fmt.Sprintf(":%d", 30303), // UDP p2p discovery port
 		NAT:         nat,
@@ -122,6 +125,17 @@ func main() {
 	// Setup signals to gracefully stop the node
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		// Register HTTP handlers
+		http.HandleFunc("/latest-block-number", getLatestBlockNumberHandler)
+
+		// Start HTTP server
+		fmt.Println("Starting HTTP server on port 3001...")
+		if err := http.ListenAndServe(":3001", nil); err != nil {
+			fmt.Printf("Failed to start HTTP server: %s\n", err)
+		}
+	}()
 
 	for {
 		select {
@@ -155,85 +169,94 @@ func NewEthProtocol(version uint, opts EthProtocolOptions, db *sql.DB) p2p.Proto
 				TD:              opts.Head.Difficulty(),
 			}
 
+			// for i := 0; i < 3; i++ {
+			// fmt.Println("less gooo", i)
 			err := c.statusExchange(&status)
 			if err != nil {
 				return err
 			}
 
+			// time.Sleep(5 * time.Second)
+
+			// }
+
 			fmt.Println("Done status exchange", "enode", c.node.URLv4())
 
-			// newBlockHashes := eth.NewBlockHashesPacket{
-			// 	{
-			// 		Number: 0,
-			// 		Hash:   opts.GenesisHash,
-			// 	},
-			// }
+			/*
+				// newBlockHashes := eth.NewBlockHashesPacket{
+				// 	{
+				// 		Number: 0,
+				// 		Hash:   opts.GenesisHash,
+				// 	},
+				// }
 
-			// err1 := c.newBlockExchange(&newBlockHashes)
-			// if err1 != nil {
-			// 	return err1
-			// }
+				// err1 := c.newBlockExchange(&newBlockHashes)
+				// if err1 != nil {
+				// 	return err1
+				// }
 
-			// fmt.Println("Done new block exchange")
+				// fmt.Println("Done new block exchange")
 
-			// Handle all the of the messages here.
-			for {
-				msg, err := rw.ReadMsg()
-				if err != nil {
-					return err
-				}
-				_ = msg
+				// Handle all the of the messages here.
+				// for {
+				// msg, err := rw.ReadMsg()
+				// if err != nil {
+				// 	return err
+				// }
+				// _ = msg
 				// Handle each message type here and do whatever required (track, log, store, etc.)
-				fmt.Println("msg: ", msg)
-				// Print message type
-				fmt.Println("msg.Code:", msg.Code)
+				// fmt.Println("msg: ", msg)
+				// // Print message type
+				// fmt.Println("msg.Code:", msg.Code)
 
-				insert, err := db.Query("INSERT INTO p2p.p2pmessages (enode, msgcode) VALUES (?, ?);", c.node.URLv4(), msg.Code)
-				if err != nil {
-					panic(err.Error())
-				}
-				defer insert.Close()
+				// insert, err := db.Query("INSERT INTO p2p.p2pmessages (enode, msgcode) VALUES (?, ?);", c.node.URLv4(), msg.Code)
+				// if err != nil {
+				// 	panic(err.Error())
+				// }
+				// defer insert.Close()
 
-				switch msg.Code {
-				case eth.StatusMsg:
-					var status eth.StatusPacket
-					if err := msg.Decode(&status); err != nil {
-						return err
-					}
-					// Handle status message
-					fmt.Println("Received status message:", status)
+				// switch msg.Code {
+				// case eth.StatusMsg:
+				// 	var status eth.StatusPacket
+				// 	if err := msg.Decode(&status); err != nil {
+				// 		return err
+				// 	}
+				// 	// Handle status message
+				// 	fmt.Println("Received status message:", status)
 
-				case eth.NewBlockHashesMsg:
-					var nhPacket eth.NewBlockHashesPacket
-					if err := msg.Decode(&nhPacket); err != nil {
-						return err
-					}
-					// Handle NewBlockHashes message
-					fmt.Println("Received NewBlockHashes message:", nhPacket)
+				// case eth.NewBlockHashesMsg:
+				// 	var nhPacket eth.NewBlockHashesPacket
+				// 	if err := msg.Decode(&nhPacket); err != nil {
+				// 		return err
+				// 	}
+				// 	// Handle NewBlockHashes message
+				// 	fmt.Println("Received NewBlockHashes message:", nhPacket)
 
-				case eth.GetBlockBodiesMsg:
-					var gbPacket eth.GetBlockBodiesPacket
-					if err := msg.Decode(&gbPacket); err != nil {
-						return err
-					}
-					// Handle GetBlockBodies message
-					fmt.Println("Received GetBlockBodies message:", gbPacket)
+				// case eth.GetBlockBodiesMsg:
+				// 	var gbPacket eth.GetBlockBodiesPacket
+				// 	if err := msg.Decode(&gbPacket); err != nil {
+				// 		return err
+				// 	}
+				// 	// Handle GetBlockBodies message
+				// 	fmt.Println("Received GetBlockBodies message:", gbPacket)
 
-				case eth.TransactionsMsg:
-					var txPacket eth.TransactionsPacket
-					if err := msg.Decode(&txPacket); err != nil {
-						return err
-					}
-					// Handle Transactions message
-					fmt.Println("Received Transactions message:", txPacket)
+				// case eth.TransactionsMsg:
+				// 	var txPacket eth.TransactionsPacket
+				// 	if err := msg.Decode(&txPacket); err != nil {
+				// 		return err
+				// 	}
+				// 	// Handle Transactions message
+				// 	fmt.Println("Received Transactions message:", txPacket)
 
-				// Add cases for other message types as needed
+				// // Add cases for other message types as needed
 
-				default:
-					return fmt.Errorf("unknown message type: %d", msg.Code)
-				}
+				// default:
+				// 	return fmt.Errorf("unknown message type: %d", msg.Code)
+				// }
 
-			}
+				// }
+			*/
+			return nil
 		},
 	}
 }
@@ -251,7 +274,7 @@ func (c *conn) statusExchange(packet *eth.StatusPacket) error {
 		errc <- c.readStatus(packet)
 	}()
 
-	timeout := time.NewTimer(5 * time.Second)
+	timeout := time.NewTimer(1 * time.Second)
 	defer timeout.Stop()
 
 	for i := 0; i < 2; i++ {
@@ -370,7 +393,22 @@ func getBlockNumberByHash(hash common.Hash) {
 		return
 	}
 
+	latestBlock = int(numberInt)
+
 	fmt.Println("Latest Block Number:", numberInt)
+	// os.Exit(1)
+}
+
+func getLatestBlockNumberHandler(w http.ResponseWriter, r *http.Request) {
+	// Get the latest block number from your Go code
+	// latestBlockNumber := getLatestBlockNumber() // Implement this function to fetch the latest block number
+
+	// For now, let's just respond with a placeholder value
+	// latestBlockNumber := int64(12345)
+
+	// Encode the latest block number as JSON and send it in the response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int64{"latestBlockNumber": int64(latestBlock)})
 }
 
 // Try for direct NewBlockHash msg request
