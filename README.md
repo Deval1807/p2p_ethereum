@@ -1,12 +1,12 @@
-Steps to run the project
+# Steps to run the project
 
-Clone the existing repo
+## Clone the existing repo
 
+## For the Backend Server:
 1. Install dependencies `go mod tidy`
 2. Start using `go run .`
 
-For the Frontend:
-
+## For the Frontend:
 1. cd into the Frontend folder
 2. run `npm i`
 3. after the server is started, start frontend by `npm run dev`
