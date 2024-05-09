@@ -26,6 +26,7 @@ import (
 )
 
 var latestBlock int
+var latestBlockHash common.Hash
 
 func main() {
 	// load the env file
@@ -322,7 +323,7 @@ func (c *conn) readStatus(packet *eth.StatusPacket) error {
 	fmt.Println("New peer connected", "fork_id", hex.EncodeToString(status.ForkID.Hash[:]), "status", status)
 	fmt.Println("Hash of new block : ", status.Head)
 
-	latestBlockHash := status.Head
+	latestBlockHash = status.Head
 	getBlockNumberByHash(latestBlockHash)
 
 	return nil
@@ -399,16 +400,21 @@ func getBlockNumberByHash(hash common.Hash) {
 	// os.Exit(1)
 }
 
-func getLatestBlockNumberHandler(w http.ResponseWriter, r *http.Request) {
-	// Get the latest block number from your Go code
-	// latestBlockNumber := getLatestBlockNumber() // Implement this function to fetch the latest block number
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+}
 
-	// For now, let's just respond with a placeholder value
-	// latestBlockNumber := int64(12345)
+func getLatestBlockNumberHandler(w http.ResponseWriter, r *http.Request) {
+	// enabling CORS
+	enableCors(&w)
 
 	// Encode the latest block number as JSON and send it in the response
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]int64{"latestBlockNumber": int64(latestBlock)})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"latestBlockNumber": latestBlock,
+		"latestBlockHash":   latestBlockHash,
+	})
+
 }
 
 // Try for direct NewBlockHash msg request
