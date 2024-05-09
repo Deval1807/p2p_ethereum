@@ -36,19 +36,19 @@ func main() {
 	}
 
 	// connect database
-	DB_URL := os.Getenv("DB_URL")
-	db, err := sql.Open("mysql", DB_URL)
-	if err != nil {
-		fmt.Println("error validating sql.Open arguments")
-		panic(err.Error())
-	}
-	defer db.Close()
-	err = db.Ping()
-	if err != nil {
-		fmt.Println("error verifying the connection with db.Ping")
-		panic(err.Error())
-	}
-	fmt.Println("Successful Connection to Database")
+	// DB_URL := os.Getenv("DB_URL")
+	// db, err := sql.Open("mysql", DB_URL)
+	// if err != nil {
+	// 	fmt.Println("error validating sql.Open arguments")
+	// 	panic(err.Error())
+	// }
+	// defer db.Close()
+	// err = db.Ping()
+	// if err != nil {
+	// 	fmt.Println("error verifying the connection with db.Ping")
+	// 	panic(err.Error())
+	// }
+	// fmt.Println("Successful Connection to Database")
 
 	// get the network information
 	n := getNetworkInfo("eth_mainnet")
