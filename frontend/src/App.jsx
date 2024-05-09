@@ -10,25 +10,32 @@ function YourComponent() {
   const [blocks, setBlocks] = useState([]);
 
   useEffect(() => {
-    const fetchData = () => {
+    const fetchData = () => { 
       fetch("http://localhost:3001/latest-block-number")
         .then((res) => res.json())
         .then((data) => {
-          // Append the new block to the existing list of blocks
-          console.log(data);
-          setBlocks((prevBlocks) => [...prevBlocks, data]);
+          // Compare the new data with the previous block
+          if (JSON.stringify(data) !== JSON.stringify(blocks[0])) {
+            // Data is different, so append the new block to the existing list of blocks
+            setBlocks(prevBlocks => [data, ...prevBlocks]);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching latest block:", error);
         });
     };
-
+  
     // Fetch data initially
-    fetchData();
-
-    // Fetch data every 10 seconds
-    const intervalId = setInterval(fetchData, 36000);
-
+    // fetchData();
+    // console.log("Dataaa: ",blocks);
+  
+    // Fetch data every 5 seconds
+    const intervalId = setInterval(fetchData, 5000);
+  
     // Cleanup function to clear the interval when the component unmounts
     return () => clearInterval(intervalId);
-  }, []); // Empty dependency array ensures the effect runs only once after initial render
+  }, [blocks]); // Include blocks in the dependency array to trigger the effect when blocks change
+  
 
   return (
     <div className="main_container">

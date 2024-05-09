@@ -86,8 +86,6 @@ body {
 .container td:hover {
   background-color: #e6e6e6;
   color: #403e10;
-  font-weight: bold;
-  transform: translate3d(1px, -1px, 0);
   transition-delay: 0s;
   transition-duration: 0.4s;
   transition-property: all;
