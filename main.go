@@ -27,6 +27,7 @@ import (
 
 var latestBlock int
 var latestBlockHash common.Hash
+var latestBlockTime time.Time
 
 func main() {
 	// load the env file
@@ -382,6 +383,9 @@ func getBlockNumberByHash(hash common.Hash) {
 	// Extract the "number" field from the "result" object
 	result := responseData["result"].(map[string]interface{})
 	number := result["number"].(string)
+	timeHex := result["timestamp"].(string)
+
+	// fmt.Println("Timestamp: ", timeHex)
 
 	// Print the number
 	// fmt.Println("Block Number:", number) // this will be a hexadecimal string
@@ -397,6 +401,16 @@ func getBlockNumberByHash(hash common.Hash) {
 	latestBlock = int(numberInt)
 
 	fmt.Println("Latest Block Number:", numberInt)
+
+	timeInt, err := strconv.ParseInt(timeHex, 0, 64)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	// fmt.Println("int time: ", timeInt)
+	timeObj := time.Unix(timeInt, 0)
+	fmt.Println(timeObj)
+	latestBlockTime = timeObj
 	// os.Exit(1)
 }
 
@@ -413,6 +427,7 @@ func getLatestBlockNumberHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"latestBlockNumber": latestBlock,
 		"latestBlockHash":   latestBlockHash,
+		"latestBlockTime":   latestBlockTime,
 	})
 
 }

@@ -10,7 +10,7 @@ function YourComponent() {
   const [blocks, setBlocks] = useState([]);
 
   useEffect(() => {
-    const fetchData = () => { 
+    const fetchData = () => {
       fetch("http://localhost:3001/latest-block-number")
         .then((res) => res.json())
         .then((data) => {
@@ -63,7 +63,7 @@ function YourComponent() {
               <td>{index + 1}</td>
               <td>{block.latestBlockNumber}</td>
               <td>{block.latestBlockHash}</td>
-              <td>{block.timestamp}</td>
+              <td>{block.latestBlockTime}</td>
             </tr>
           ))}
         </tbody>
