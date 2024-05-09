@@ -1,10 +1,21 @@
 Steps to run the project
 
-1. Create a new go project `go mod init p2p-query`
-2. Copy files above
-3. Install dependencies `go mod tidy`
-4. Start using `go run .`
+Clone the existing repo
 
-This programme will create a very minimalistic p2p node and will try to connect with a particular network (eth mainnet or polygon mainnet). Post establishing connection, it can send/receive messages as and when require. I will have to write the code to handle each message type and act accordingly. 
+1. Install dependencies `go mod tidy`
+2. Start using `go run .`
 
-Note: It will take some time (few mins or maybe hours) to connect to a good peer. Please keep the code running or restarting if it isn't connecting with good peers. Once it does, make sure to note it's enode so that you can hardcode it in the p2p config and try to directly connect to that peer the next time. 
+For the Frontend:
+
+1. cd into the Frontend folder
+2. run `npm i`
+3. after the server is started, start frontend by `npm run dev`
+
+This programme will create a very minimalistic p2p node and will try to connect with a particular network (eth mainnet or polygon mainnet). Post establishing connection, it can send/receive messages as and when require. 
+
+For simplicity, the current implementation will only connect to 1 particular peer, rather than finding new peer each time.
+It will do a status exchange with the connected peer and get the Hash of the Latest Block from the same.
+
+We will get other block information like block number and timestamp from the hash by a 3rd party RPC call (we are using Alchemy).
+
+This data will be sent to frontend and rendered there.
